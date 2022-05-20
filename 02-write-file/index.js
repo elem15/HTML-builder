@@ -8,25 +8,20 @@ const rl = readline.createInterface({ input, output });
 const outputStream = fs.createWriteStream(path.join(__dirname, 'text.txt'));
 
 outputStream.write('');
+output.write('Введите текст:\n');
 
 let content = '';
 
-rl.question('Введите текст:\n', (answer) => {
-  if(answer === 'exit') {
+rl.on('line', (chunk) => {
+  if(chunk === 'exit') {
     rl.close();
     return;
-  }  
-  content += answer;
-  rl.on('line', (chunk) => {
-    if(chunk === 'exit') {
-      rl.close();
-      return;
-    } 
-    content += chunk;
-  });
+  } 
+  content += chunk;
 });
 
 process.on('exit', () => {
   outputStream.write(content);
+  outputStream.on('error', (err) => console.error('Error:', err));
   output.write('Спасибо за информацию.');
 });
