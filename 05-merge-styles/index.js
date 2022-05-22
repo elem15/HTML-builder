@@ -21,7 +21,6 @@ fs.readdir(path.join(__dirname, 'styles'), async (err, files) => {
     }
   }
 });
-
 process.on('exit', () => {
   output.write(arr.join('\n'));
   output.on('error', (err) => console.log(err));
