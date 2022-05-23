@@ -26,7 +26,7 @@ async function copyDir(path1, path2) {
     for (const file of files) {
       if (file.isDirectory()) {
         await copyDir(path.join(path1, file.name), path.join(path2, file.name));
-      } else if (file.isFile()) {
+      } else {
         await copyFile(path.join(path1, file.name), path.join(path2, file.name));
       }
     }

@@ -51,7 +51,9 @@ async function buildCss() {
       const extname = path.extname(src);
       if (extname === '.css') {
         const stream = fs.createReadStream(src, 'utf-8');
-        stream.pipe(output);
+        stream.on('data', chunk => {
+          output.write(chunk + '\n\n');
+        });
       }
     }
   });
@@ -83,24 +85,24 @@ async function buildHtml() {
         html += data[i];
       }
     }
-    fs.readdir(path.join(__dirname, 'components'), async (err, files) => {
-      if (err) console.log(err);
-      for (const file of files) {
-        let data = '';
-        if (path.extname(file) === '.html') {
-          const inputSource = fs.createReadStream(path.join(__dirname, 'components', file), 'utf-8');
-          inputSource.on('data', (chunk) => {
-            data += chunk;
-          });
-          inputSource.on('end', () => {
-            sources[path.basename(file, path.extname(file))] = data.trim();
-          });
-          inputSource.on('error', (err) => console.log(err));
-        }
-      }
-    });
   });
   input.on('error', (err) => console.error('Error:', err));
+  fs.readdir(path.join(__dirname, 'components'), async (err, files) => {
+    if (err) console.log(err);
+    for (const file of files) {
+      let data = '';
+      if (path.extname(file) === '.html') {
+        const inputSource = fs.createReadStream(path.join(__dirname, 'components', file), 'utf-8');
+        inputSource.on('data', (chunk) => {
+          data += chunk;
+        });
+        inputSource.on('end', () => {
+          sources[path.basename(file, path.extname(file))] = data.trim();
+        });
+        inputSource.on('error', (err) => console.log(err));
+      }
+    }
+  });
 }
 
 async function combine() {
@@ -118,4 +120,5 @@ process.on('exit', async () => {
     arr[idx] = sources[key];
   });
   output.write(arr.join(''));
+  output.on('error', (err) => console.log(err));
 });
