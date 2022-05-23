@@ -51,9 +51,11 @@ async function buildCss() {
       const extname = path.extname(src);
       if (extname === '.css') {
         const stream = fs.createReadStream(src, 'utf-8');
+        let data = '';
         stream.on('data', chunk => {
-          output.write(chunk + '\n\n');
+          data += chunk;
         });
+        stream.on('end', () => output.write(data + '\n\n'));                
       }
     }
   });
