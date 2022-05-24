@@ -10,18 +10,15 @@ const outputStream = fs.createWriteStream(path.join(__dirname, 'text.txt'));
 outputStream.write('');
 output.write('Введите текст:\n');
 
-let content = '';
-
 rl.on('line', (chunk) => {
-  if(chunk === 'exit') {
+  if(String(chunk).trim() === 'exit') {
     rl.close();
     return;
   } 
-  content += chunk;
+  outputStream.write(chunk + '\n');
 });
 
-process.on('exit', () => {
-  outputStream.write(content);
+process.on('exit', () => {  
   outputStream.on('error', (err) => console.error('Error:', err));
   output.write('Спасибо за информацию.');
 });
