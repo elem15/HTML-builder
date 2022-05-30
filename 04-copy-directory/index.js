@@ -1,9 +1,14 @@
 
 const path = require('path');
-const { mkdir, rmdir, readdir, copyFile, unlink, access } = require('fs/promises');
+const { mkdir, rmdir, readdir, unlink, access } = require('fs/promises');
 const constants = require('fs');
+const { createReadStream, createWriteStream } = require('fs');
+const { pipeline } = require('stream/promises');
 
-async function clearDir(path1) {  
+const src = path.join(__dirname, 'files');
+const destination = path.join(__dirname, 'files-copy');
+
+async function clearDir(path1) {
   try {
     const files = await readdir(path1, { withFileTypes: true });
     for (const file of files) {
@@ -27,7 +32,11 @@ async function copyDir(path1, path2) {
       if (file.isDirectory()) {
         await copyDir(path.join(path1, file.name), path.join(path2, file.name));
       } else {
-        await copyFile(path.join(path1, file.name), path.join(path2, file.name));
+        const pathToSrc = path.join(path1, file.name);
+        const pathToDestination = path.join(path2, file.name);
+        const rs = createReadStream(pathToSrc);
+        const ws = createWriteStream(pathToDestination);
+        await pipeline(rs, ws);
       }
     }
   } catch (err) {
@@ -36,13 +45,13 @@ async function copyDir(path1, path2) {
 }
 (async function () {
   try {
-    await access(path.join(__dirname, 'files-copy'), constants.R_OK | constants.W_OK)
-    await clearDir(path.join(__dirname, 'files-copy'));
+    await access(destination, constants.R_OK | constants.W_OK)
+    await clearDir(destination);
     console.log('Old folder deleted!');
   } catch {
     console.log('Folder does not exist');
   } finally {
-    await copyDir(path.join(__dirname, 'files'), path.join(__dirname, 'files-copy'));
+    await copyDir(src, destination);
     console.log('New folder created!');
   }
 }
