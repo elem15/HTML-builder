@@ -42,30 +42,28 @@ async function buildAssets() {
 
 async function buildCss() {
   const output = fs.createWriteStream(path.join(__dirname, 'project-dist', 'style.css'));
-  fs.readdir(path.join(__dirname, 'styles'), async (err, files) => {
-    if (err) console.log(err);
-    for (const file of files) {
-      const src = path.join(__dirname, 'styles', file);
-      const extname = path.extname(src);
-      if (extname === '.css') {
-        const stream = fs.createReadStream(src, 'utf-8');
-        let data = '';
-        stream.on('data', chunk => {
-          data += chunk;
-        });
-        stream.on('end', () => output.write(data + '\n\n'));
-        stream.on('error', (err) => console.log('Style building error:', err));
-      }
+  const files = await readdir(path.join(__dirname, 'styles'));
+  for await (const file of files) {
+    const src = path.join(__dirname, 'styles', file);
+    const extname = path.extname(src);
+    if (extname === '.css') {
+      const stream = fs.createReadStream(src, 'utf-8');
+      let data = '';
+      stream.on('data', chunk => {
+        data += chunk;
+      });
+      stream.on('end', () => output.write(data + '\n\n'));
+      stream.on('error', (err) => console.log('Style building error:', err));
     }
-  });
+  }
 }
-const readStream = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
 
-let template = '';
+const readStream = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
+let htmlBuild = '';
 
 async function buildHtml() {
   readStream.on('data', (chunk) => {
-    template = chunk;
+    htmlBuild = chunk;
   });
   readStream.on('end', async () => {
     const files = await readdir(path.join(__dirname, 'components'));
@@ -79,7 +77,10 @@ async function buildHtml() {
         });
         inputSource.on('end', () => {
           const name = path.basename(file, extname);
-          template = template.replace(`{{${name}}}`, data);
+          htmlBuild = htmlBuild.replace(`{{${name}}}`, data);
+          const output = fs.createWriteStream(path.join(__dirname, 'project-dist', 'index.html'));
+          output.write(htmlBuild);
+          output.on('error', (err) => console.log(err));
         });
         inputSource.on('error', (err) => console.log(err));
       }
@@ -87,7 +88,6 @@ async function buildHtml() {
   });
 }
 
-const output = fs.createWriteStream(path.join(__dirname, 'project-dist', 'index.html'));
 async function combine() {
   await mkdir(path.join(__dirname, 'project-dist'), { recursive: true });
   await buildAssets();
@@ -95,9 +95,3 @@ async function combine() {
   await buildHtml();
 }
 combine();
-
-
-process.on('exit', async () => { 
-  output.write(template);
-  output.on('error', (err) => console.log(err));
-});
