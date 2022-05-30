@@ -2,8 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { mkdir, rmdir, readdir, copyFile, unlink } = require('fs/promises');
 
-const input = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
-
 async function buildAssets() {
   async function clearDir(err, path1) {
     if (err) return;
@@ -55,52 +53,33 @@ async function buildCss() {
         stream.on('data', chunk => {
           data += chunk;
         });
-        stream.on('end', () => output.write(data + '\n\n'));                
+        stream.on('end', () => output.write(data + '\n\n'));
         stream.on('error', (err) => console.log('Style building error:', err));
       }
     }
   });
 }
+const readStream = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
 
-let data = '';
-const sources = {};
-const arr = [];
+let template = '';
+
 async function buildHtml() {
-  input.on('data', async (chunk) => {
-    data += chunk;
-    let html = '';
-    let sourceName = '';
-    let state = 'writeTemplate';
-    for (let i = 0; i < data.length; i++) {
-      if (data[i] === '{' && data[i + 1] === '{') {
-        state = 'writeSource';
-        arr.push(html);
-        html = '';
-        sourceName += data[i];
-      } else if (data[i] !== '{' && data[i] !== '}' && state === 'writeSource') {
-        sourceName += data[i];
-      } else if (data[i] === '}' && data[i - 1] === '}') {
-        sourceName += data[i];
-        state = 'writeTemplate';
-        arr.push(sourceName);
-        sourceName = '';
-      } else if (state === 'writeTemplate') {
-        html += data[i];
-      }
-    }
+  readStream.on('data', (chunk) => {
+    template = chunk;
   });
-  input.on('error', (err) => console.error('Error:', err));
-  fs.readdir(path.join(__dirname, 'components'), async (err, files) => {
-    if (err) console.log(err);
-    for (const file of files) {
+  readStream.on('end', async () => {
+    const files = await readdir(path.join(__dirname, 'components'));
+    for await (const file of files) {
       let data = '';
-      if (path.extname(file) === '.html') {
+      const extname = path.extname(file);
+      if (extname === '.html') {
         const inputSource = fs.createReadStream(path.join(__dirname, 'components', file), 'utf-8');
         inputSource.on('data', (chunk) => {
           data += chunk;
         });
         inputSource.on('end', () => {
-          sources[path.basename(file, path.extname(file))] = data.trim();
+          const name = path.basename(file, extname);
+          template = template.replace(`{{${name}}}`, data);
         });
         inputSource.on('error', (err) => console.log(err));
       }
@@ -108,20 +87,17 @@ async function buildHtml() {
   });
 }
 
+const output = fs.createWriteStream(path.join(__dirname, 'project-dist', 'index.html'));
 async function combine() {
   await mkdir(path.join(__dirname, 'project-dist'), { recursive: true });
   await buildAssets();
   await buildCss();
-  return await buildHtml();
+  await buildHtml();
 }
 combine();
 
-const output = fs.createWriteStream(path.join(__dirname, 'project-dist', 'index.html'));
-process.on('exit', async () => {
-  Object.keys(sources).map(key => {
-    const idx = arr.indexOf(`{${key}}`);
-    arr[idx] = sources[key];
-  });
-  output.write(arr.join(''));
+
+process.on('exit', async () => { 
+  output.write(template);
   output.on('error', (err) => console.log(err));
 });
