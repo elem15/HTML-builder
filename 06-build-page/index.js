@@ -56,6 +56,7 @@ async function buildCss() {
           data += chunk;
         });
         stream.on('end', () => output.write(data + '\n\n'));                
+        stream.on('error', (err) => console.log('Style building error:', err));
       }
     }
   });

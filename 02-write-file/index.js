@@ -11,13 +11,13 @@ outputStream.write('');
 output.write('Введите текст:\n');
 
 rl.on('line', (chunk) => {
-  if(String(chunk).trim() === 'exit') {
+  if(String(chunk).trim().toLocaleLowerCase() === 'exit') {
     rl.close();
     return;
   } 
   outputStream.write(chunk + '\n');
 });
-
+ 
 process.on('exit', () => {  
   outputStream.on('error', (err) => console.error('Error:', err));
   output.write('Спасибо за информацию.');
